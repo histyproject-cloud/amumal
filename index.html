@@ -543,7 +543,12 @@ async function loadPosts(){
       const since=new Date(Date.now()-86400000).toISOString();
       query=query.gte('created_at',since).limit(100);
     }else if(currentTab==='comments'){
-      query=query.order('comment_count',{ascending:false}).limit(50);
+      // comment_count 컬럼 없을 수 있어서 created_at으로 fallback
+      try{
+        query=query.order('comment_count',{ascending:false}).limit(50);
+      }catch{
+        query=sb.from('posts').select('*').order('created_at',{ascending:false}).limit(50);
+      }
     }else if(currentTab==='debate'){
       query=query.limit(200);
     }
