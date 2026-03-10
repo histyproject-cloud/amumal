@@ -410,13 +410,27 @@ async function deletePost(id) {
 }
 
 async function hidePost(id) {
-  await sb.from('posts').update({ hidden: true }).eq('id', id);
+  const { error } = await sb.from('posts').update({ hidden: true }).eq('id', id);
+  if (error) { showToast('오류: ' + error.message); return; }
   showToast('숨김 처리됐어요'); loadAllPosts();
 }
 
 async function restorePost(id) {
-  await sb.from('posts').update({ hidden: false, report_count: 0 }).eq('id', id);
+  const { error } = await sb.from('posts').update({ hidden: false, report_count: 0 }).eq('id', id);
+  if (error) { showToast('오류: ' + error.message); return; }
   showToast('복원됐어요'); loadAllPosts();
+}
+
+async function hideComment(id) {
+  const { error } = await sb.from('comments').update({ hidden: true }).eq('id', id);
+  if (error) { showToast('오류: ' + error.message); return; }
+  showToast('댓글 숨김됐어요'); loadAllComments();
+}
+
+async function restoreComment(id) {
+  const { error } = await sb.from('comments').update({ hidden: false }).eq('id', id);
+  if (error) { showToast('오류: ' + error.message); return; }
+  showToast('댓글 복원됐어요'); loadAllComments();
 }
 
 async function deleteComment(id) {
@@ -459,6 +473,7 @@ async function loadAllComments() {
             <td style="color:var(--text3)">${timeAgo(c.created_at)}</td>
             <td>
               <button class="btn-delete" onclick="deleteCommentFromList(${c.id})">삭제</button>
+              ${c.hidden ? `<button class="btn-restore" onclick="restoreComment(${c.id})">복원</button>` : `<button class="btn-restore" onclick="hideComment(${c.id})">숨김</button>`}
             </td>
           </tr>`).join('')}
         </tbody>
@@ -481,10 +496,11 @@ async function quickBanIp(ip) {
   const { error } = await sb.from('banned_ips').insert({ ip, reason: reason||null });
   if (error) {
     if (error.code === '23505') showToast('이미 차단된 IP예요');
-    else showToast('오류: ' + error.message);
+    else showToast('차단 실패: ' + error.message);
     return;
   }
   showToast(`${ip} 차단됐어요 ⛔`);
+  loadBannedIps();
 }
 
 // ══════════════════════════════
