@@ -724,6 +724,64 @@ function timeAgo(ts){
 }
 function autoResize(el){el.style.height='40px';el.style.height=Math.min(el.scrollHeight,120)+'px';}
 
+// ── 플로팅 버튼 ──
+function scrollToTop(){
+  window.scrollTo({top:0,behavior:'smooth'});
+  setTimeout(async()=>{
+    showSkeleton();
+    await loadPosts();
+    showToast('새로고침 됐어요 ✨');
+  },400);
+}
+function scrollToWrite(){
+  // 상세 오버레이 열려있으면 닫기
+  if(document.getElementById('detailOverlay').classList.contains('open')){
+    closeDetail();
+    setTimeout(()=>{
+      window.scrollTo({top:0,behavior:'smooth'});
+      setTimeout(()=>document.getElementById('writeContent').focus(),400);
+    },100);
+    return;
+  }
+  window.scrollTo({top:0,behavior:'smooth'});
+  setTimeout(()=>document.getElementById('writeContent').focus(),400);
+}
+
+// 스크롤 내리면 ↑ 버튼 표시
+window.addEventListener('scroll',()=>{
+  const topBtn=document.getElementById('topBtn');
+  if(window.scrollY>300)topBtn.classList.add('show');
+  else topBtn.classList.remove('show');
+});
+
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeDetail();closeLightbox();closeReport();}
+});
+
+// ── 플로팅 버튼 ──
+function scrollToTop(){
+  window.scrollTo({top:0,behavior:'smooth'});
+  setTimeout(async()=>{
+    showSkeleton();
+    await loadPosts();
+    showToast('새로고침됐어요 ✨');
+  },400);
+}
+function scrollToWrite(){
+  // 상세 오버레이 열려있으면 닫기
+  if(document.getElementById('detailOverlay').classList.contains('open')){
+    closeDetail();
+    return;
+  }
+  const writeBox=document.getElementById('writeBox');
+  writeBox.scrollIntoView({behavior:'smooth',block:'center'});
+  setTimeout(()=>document.getElementById('writeContent').focus(),400);
+}
+
+// 스크롤에 따라 맨위로 버튼 표시
+window.addEventListener('scroll',()=>{
+  const topBtn=document.getElementById('topBtn');
+  if(!topBtn)return;
+  if(window.scrollY>300){topBtn.classList.add('show');}
+  else{topBtn.classList.remove('show');}
 });
