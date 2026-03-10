@@ -1066,49 +1066,6 @@ function renderReplyImgPreview(parentId){
 }
 function removeReplyImg(parentId,i){replyImages[parentId].splice(i,1);renderReplyImgPreview(parentId);}
 
-// ── 댓글 작성 ──
-async function submitComment(){
-  const input=document.getElementById('commentInput');
-  const text=input.value.trim();
-  if(!text&&!commentImages.length||!currentPostId)return;
-  if(text&&hasBannedWord(text)){showToast('사용할 수 없는 단어 포함');return;}
-  try{
-    await sb.from('comments').insert({post_id:currentPostId,content:text,up:0,images:commentImages});
-    // 트리거가 없을 경우 수동으로도 업데이트
-    try{
-      const newCount=(currentPostData?.comment_count||0)+1;
-      await sb.from('posts').update({comment_count:newCount}).eq('id',currentPostId);
-      if(currentPostData)currentPostData.comment_count=newCount;
-    }catch{}
-    input.value='';input.style.height='40px';
-    commentImages=[];renderCommentImgPreview();
-    await loadComments(currentPostId);
-    showToast('댓글 등록됐어요');
-    setTimeout(()=>{document.querySelector('.detail-panel').scrollTop=99999;},100);
-  }catch(e){showToast('오류: '+e.message);}
-}
-
-async function submitReply(parentId){
-  const input=document.getElementById(`replyInput-${parentId}`);
-  const text=input.value.trim();
-  const imgs=replyImages[parentId]||[];
-  if(!text&&!imgs.length||!currentPostId)return;
-  if(text&&hasBannedWord(text)){showToast('사용할 수 없는 단어 포함');return;}
-  try{
-    await sb.from('comments').insert({post_id:currentPostId,parent_id:parentId,content:text,up:0,images:imgs});
-    try{
-      const newCount=(currentPostData?.comment_count||0)+1;
-      await sb.from('posts').update({comment_count:newCount}).eq('id',currentPostId);
-      if(currentPostData)currentPostData.comment_count=newCount;
-    }catch{}
-    input.value='';
-    replyImages[parentId]=[];
-    document.getElementById(`replyWrite-${parentId}`).classList.remove('open');
-    await loadComments(currentPostId);
-    showToast('답글 등록됐어요');
-  }catch(e){showToast('오류: '+e.message);}
-}
-
 // ── 신고 ──
 function openReport(type,id){reportTarget={type,id};document.getElementById('reportModal').classList.add('open');}
 function closeReport(e){if(!e||e.target===document.getElementById('reportModal'))document.getElementById('reportModal').classList.remove('open');}
