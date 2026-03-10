@@ -176,10 +176,14 @@ function renderList(posts,highlight=''){
         :`<div class="empty-state"><div>🌑</div><p>아직 글이 없어요</p></div>`);
     return;
   }
-  const midAd=`<div class="ad-slot" style="margin:6px 0 10px"><div class="ad-slot-label">ADVERTISEMENT</div><span>광고 영역</span></div>`;
+  const adSlot=()=>`<div class="ad-slot" style="margin:6px 0 10px"><div class="ad-slot-label">ADVERTISEMENT</div><span>광고 영역 (320×100)</span></div>`;
   const cards=posts.map(p=>renderPostCard(p,highlight));
-  if(cards.length>5)cards.splice(5,0,midAd);
-  c.innerHTML=cards.join('');
+  const withAds=[];
+  cards.forEach((card,i)=>{
+    withAds.push(card);
+    if((i+1)%3===0&&i+1<cards.length)withAds.push(adSlot());
+  });
+  c.innerHTML=withAds.join('');
 }
 
 function renderPostCard(p,highlight=''){
