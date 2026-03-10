@@ -135,7 +135,9 @@
       <button class="admin-tab active" onclick="switchAdminTab('stats', this)">📊 통계</button>
       <button class="admin-tab" onclick="switchAdminTab('reports', this)">🚨 신고</button>
       <button class="admin-tab" onclick="switchAdminTab('posts', this)">📝 게시글</button>
+      <button class="admin-tab" onclick="switchAdminTab('comments', this)">💬 댓글</button>
       <button class="admin-tab" onclick="switchAdminTab('banned', this)">🚫 금칙어</button>
+      <button class="admin-tab" onclick="switchAdminTab('ipban', this)">⛔ IP 차단</button>
     </div>
 
     <!-- 통계 탭 -->
@@ -182,6 +184,15 @@
       <div id="postsList"><div class="loading">불러오는 중...</div></div>
     </div>
 
+    <!-- 댓글 탭 -->
+    <div class="tab-content" id="tab-comments">
+      <div class="filter-row">
+        <button class="refresh-btn" onclick="loadAllComments()">🔄 새로고침</button>
+      </div>
+      <div class="section-title">댓글 목록 <span class="count-badge" id="commentsCount">0</span></div>
+      <div id="commentsList"><div class="loading">불러오는 중...</div></div>
+    </div>
+
     <!-- 금칙어 탭 -->
     <div class="tab-content" id="tab-banned">
       <div class="section-title">금칙어 목록</div>
@@ -193,6 +204,25 @@
       </div>
       <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
         <div style="font-size:12px; color:var(--text2); margin-bottom:8px;">💡 금칙어는 브라우저에 저장돼요. 여러 기기에서 관리하려면 Supabase에 테이블을 만드는 걸 추천해요.</div>
+      </div>
+    </div>
+
+    <!-- IP 차단 탭 -->
+    <div class="tab-content" id="tab-ipban">
+      <div class="filter-row">
+        <button class="refresh-btn" onclick="loadBannedIps()">🔄 새로고침</button>
+      </div>
+      <div class="section-title">차단된 IP <span class="count-badge" id="ipbanCount">0</span></div>
+      <div class="add-banned-row" style="margin-bottom:16px;">
+        <input class="banned-input" id="ipbanInput" placeholder="차단할 IP 주소 (예: 1.2.3.4)" maxlength="45"
+          onkeydown="if(event.key==='Enter') addBannedIp()">
+        <input class="banned-input" id="ipbanReason" placeholder="차단 사유 (선택)" maxlength="100" style="max-width:200px;">
+        <button class="btn-primary" onclick="addBannedIp()">차단</button>
+      </div>
+      <div id="ipbanList"><div class="loading">불러오는 중...</div></div>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+        <div style="font-size:12px;color:var(--text2);">💡 차단된 IP는 글/댓글 작성이 불가능해요. 신고된 글의 IP를 여기서 직접 입력해 차단하세요.</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:6px;">📋 게시글/댓글 탭에서 IP가 표시된 항목을 확인 후 복사해서 사용하세요.</div>
       </div>
     </div>
   </div>
@@ -235,7 +265,9 @@ function switchAdminTab(tab, el) {
   if (tab === 'stats') loadStats();
   if (tab === 'reports') loadReports();
   if (tab === 'posts') loadAllPosts();
+  if (tab === 'comments') loadAllComments();
   if (tab === 'banned') loadBannedWords();
+  if (tab === 'ipban') loadBannedIps();
 }
 
 // ══════════════════════════════
@@ -343,12 +375,19 @@ async function loadAllPosts() {
     document.getElementById('postsList').innerHTML = `
       <table class="admin-table">
         <thead><tr>
-          <th>태그</th><th>내용</th><th>공감</th><th>신고</th><th>시간</th><th>관리</th>
+          <th>태그</th><th>내용 / IP</th><th>공감</th><th>신고</th><th>시간</th><th>관리</th>
         </tr></thead>
         <tbody>${data.map(p => `
           <tr>
             <td><span class="tag-badge" style="font-size:10px;padding:2px 6px;border-radius:10px;background:var(--bg3);color:var(--text2)">${p.tag}</span></td>
-            <td class="content-cell">${escHtml(p.content||'')} ${p.hidden ? '<span class="hidden-badge">숨김</span>' : ''}</td>
+            <td class="content-cell">
+              <div>${escHtml(p.content||'')} ${p.hidden ? '<span class="hidden-badge">숨김</span>' : ''}</div>
+              <div style="margin-top:3px">
+                ${p.ip
+                  ? `<code style="font-size:11px;background:var(--bg3);color:var(--yellow);padding:1px 6px;border-radius:4px;cursor:pointer;border:1px solid var(--border2)" onclick="quickBanIp('${escHtml(p.ip)}')" title="클릭 → 차단">🌐 ${escHtml(p.ip)}</code>`
+                  : `<span style="font-size:11px;color:var(--text3)">IP 없음</span>`}
+              </div>
+            </td>
             <td style="color:var(--accent)">👍 ${p.up||0}</td>
             <td>${p.report_count > 0 ? `<span class="report-badge">${p.report_count}건</span>` : '-'}</td>
             <td style="color:var(--text3)">${timeAgo(p.created_at)}</td>
@@ -385,6 +424,67 @@ async function deleteComment(id) {
   const { error } = await sb.from('comments').delete().eq('id', id);
   if (error) { showToast('삭제 실패'); return; }
   showToast('댓글이 삭제됐어요'); loadReports();
+}
+
+// ══════════════════════════════
+// 댓글 관리
+// ══════════════════════════════
+async function loadAllComments() {
+  document.getElementById('commentsList').innerHTML = '<div class="loading">불러오는 중...</div>';
+  try {
+    const { data, error } = await sb.from('comments').select('*').order('created_at', { ascending: false }).limit(200);
+    if (error) throw error;
+    document.getElementById('commentsCount').textContent = (data||[]).length;
+    if (!data || !data.length) {
+      document.getElementById('commentsList').innerHTML = '<div style="color:var(--text3);padding:20px 0;font-size:13px">댓글이 없어요</div>'; return;
+    }
+    document.getElementById('commentsList').innerHTML = `
+      <table class="admin-table">
+        <thead><tr>
+          <th>글 ID</th><th>내용 / IP</th><th>공감</th><th>신고</th><th>시간</th><th>관리</th>
+        </tr></thead>
+        <tbody>${data.map(c => `
+          <tr>
+            <td style="color:var(--text2);font-size:12px">${c.parent_id ? `↳ #${c.post_id}` : `#${c.post_id}`}</td>
+            <td class="content-cell">
+              <div>${escHtml(c.content||'')}</div>
+              <div style="margin-top:3px">
+                ${c.ip
+                  ? `<code style="font-size:11px;background:var(--bg3);color:var(--yellow);padding:1px 6px;border-radius:4px;cursor:pointer;border:1px solid var(--border2)" onclick="quickBanIp('${escHtml(c.ip)}')" title="클릭 → 차단">🌐 ${escHtml(c.ip)}</code>`
+                  : `<span style="font-size:11px;color:var(--text3)">IP 없음</span>`}
+              </div>
+            </td>
+            <td style="color:var(--accent)">👍 ${c.up||0}</td>
+            <td>${c.report_count > 0 ? `<span class="report-badge">${c.report_count}건</span>` : '-'}</td>
+            <td style="color:var(--text3)">${timeAgo(c.created_at)}</td>
+            <td>
+              <button class="btn-delete" onclick="deleteCommentFromList(${c.id})">삭제</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch(e) { document.getElementById('commentsList').innerHTML = `<div class="loading">오류: ${e.message}</div>`; }
+}
+
+async function deleteCommentFromList(id) {
+  if (!confirm(`댓글 #${id}을 삭제할까요?`)) return;
+  const { error } = await sb.from('comments').delete().eq('id', id);
+  if (error) { showToast('삭제 실패: '+error.message); return; }
+  showToast('댓글이 삭제됐어요');
+  loadAllComments();
+}
+
+// IP 빠른 차단 (테이블에서 IP 클릭 시)
+async function quickBanIp(ip) {
+  if (!confirm(`${ip}\n이 IP를 차단할까요?`)) return;
+  const reason = prompt('차단 사유 (선택, 그냥 확인해도 됨)') || '';
+  const { error } = await sb.from('banned_ips').insert({ ip, reason: reason||null });
+  if (error) {
+    if (error.code === '23505') showToast('이미 차단된 IP예요');
+    else showToast('오류: ' + error.message);
+    return;
+  }
+  showToast(`${ip} 차단됐어요 ⛔`);
 }
 
 // ══════════════════════════════
@@ -429,6 +529,59 @@ function removeBannedWord(i) {
   saveBannedWords(words);
   loadBannedWords();
   showToast(`"${removed}" 삭제됐어요`);
+}
+
+// ══════════════════════════════
+// IP 차단
+// ══════════════════════════════
+async function loadBannedIps() {
+  document.getElementById('ipbanList').innerHTML='<div class="loading">불러오는 중...</div>';
+  const { data, error } = await sb.from('banned_ips').select('*').order('created_at', { ascending: false });
+  if (error) { document.getElementById('ipbanList').innerHTML=`<div style="color:var(--accent);font-size:13px">오류: ${error.message}</div>`; return; }
+  const list = data || [];
+  document.getElementById('ipbanCount').textContent = list.length;
+  if (!list.length) {
+    document.getElementById('ipbanList').innerHTML='<div style="color:var(--text3);font-size:13px;padding:20px 0">차단된 IP가 없어요</div>';
+    return;
+  }
+  document.getElementById('ipbanList').innerHTML = `
+    <table class="admin-table">
+      <thead><tr><th>IP</th><th>사유</th><th>차단일시</th><th>관리</th></tr></thead>
+      <tbody>${list.map(b=>`
+        <tr>
+          <td><code style="font-family:monospace;color:var(--accent)">${escHtml(b.ip)}</code></td>
+          <td style="color:var(--text2)">${escHtml(b.reason||'-')}</td>
+          <td style="color:var(--text3);font-size:12px">${timeAgo(b.created_at)}</td>
+          <td><button class="btn-restore" onclick="unbanIp(${b.id},'${escHtml(b.ip)}')">해제</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function addBannedIp() {
+  const ip = document.getElementById('ipbanInput').value.trim();
+  const reason = document.getElementById('ipbanReason').value.trim();
+  if (!ip) { showToast('IP를 입력해주세요'); return; }
+  // 간단한 IP 형식 체크
+  if (!/^[\d.:\w]+$/.test(ip)) { showToast('올바른 IP 형식이 아니에요'); return; }
+  const { error } = await sb.from('banned_ips').insert({ ip, reason: reason||null });
+  if (error) {
+    if (error.code === '23505') showToast('이미 차단된 IP예요');
+    else showToast('오류: ' + error.message);
+    return;
+  }
+  document.getElementById('ipbanInput').value = '';
+  document.getElementById('ipbanReason').value = '';
+  showToast(`${ip} 차단됐어요 ⛔`);
+  loadBannedIps();
+}
+
+async function unbanIp(id, ip) {
+  if (!confirm(`${ip} 차단을 해제할까요?`)) return;
+  const { error } = await sb.from('banned_ips').delete().eq('id', id);
+  if (error) { showToast('오류: ' + error.message); return; }
+  showToast(`${ip} 차단 해제됐어요`);
+  loadBannedIps();
 }
 
 // ── 유틸 ──

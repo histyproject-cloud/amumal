@@ -164,7 +164,16 @@
   .detail-time{font-size:11px;color:var(--text3);}
   .detail-content{font-size:15px;line-height:1.8;color:var(--text);margin-bottom:16px;word-break:break-all;white-space:pre-wrap;}
   .detail-images{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
-  .detail-images img{max-width:200px;border-radius:8px;border:1px solid var(--border2);cursor:zoom-in;}
+  .detail-images img{width:calc(75vw);max-width:420px;border-radius:8px;border:1px solid var(--border2);cursor:zoom-in;object-fit:cover;}
+  /* 댓글 이미지 */
+  .comment-img-wrap{margin-top:6px;}
+  .comment-img-wrap img{width:calc(60vw);max-width:300px;border-radius:6px;border:1px solid var(--border2);cursor:zoom-in;object-fit:cover;}
+  .comment-img-label{background:none;border:1px solid var(--border2);color:var(--text3);font-size:11px;padding:4px 8px;border-radius:6px;cursor:pointer;margin-right:6px;}
+  .comment-img-label:hover{border-color:var(--text2);color:var(--text2);}
+  .comment-img-preview{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
+  .comment-img-preview-item{position:relative;width:56px;height:56px;}
+  .comment-img-preview-item img{width:100%;height:100%;object-fit:cover;border-radius:6px;border:1px solid var(--border2);}
+  .comment-img-preview-item button{position:absolute;top:-5px;right:-5px;width:16px;height:16px;background:var(--accent);color:white;border:none;border-radius:50%;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
   .reaction-row{display:flex;gap:8px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border);align-items:center;flex-wrap:wrap;}
   .react-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-size:13px;padding:7px 16px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;font-family:'Noto Sans KR',sans-serif;}
   .react-btn.up.active{background:#2a1a1a;border-color:var(--accent);color:var(--accent);}
@@ -200,7 +209,8 @@
   .comment-input::placeholder{color:var(--text3);}
   .comment-submit{background:var(--accent);color:white;border:none;font-size:12px;font-weight:700;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
   .reply-write{padding:8px 0 0 28px;display:none;}
-  .reply-write.open{display:flex;gap:8px;align-items:center;}
+  .reply-write.open{display:flex;flex-direction:column;gap:6px;}
+  .reply-write-inner{display:flex;gap:6px;align-items:center;}
   .reply-input{flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;outline:none;font-family:'Noto Sans KR',sans-serif;}
   .reply-submit{background:var(--blue);color:white;border:none;font-size:11px;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap;}
 
@@ -362,7 +372,10 @@
       <div id="commentList"></div>
     </div>
     <div class="comment-write">
+      <div class="comment-img-preview" id="commentImgPreview"></div>
       <div class="comment-write-inner">
+        <label class="comment-img-label" for="commentImageInput">📷</label>
+        <input type="file" id="commentImageInput" accept="image/*" multiple onchange="handleCommentImageSelect(this)">
         <textarea class="comment-input" id="commentInput" placeholder="댓글을 남겨보세요..." maxlength="300" rows="1" oninput="autoResize(this)"></textarea>
         <button class="comment-submit" onclick="submitComment()">등록</button>
       </div>
@@ -392,12 +405,12 @@
 <footer style="text-align:center;padding:24px 16px 40px;font-size:12px;color:#444;">
   <a href="/privacy.html" style="color:#555;text-decoration:none;" onmouseover="this.style.color='#888'" onmouseout="this.style.color='#555'">개인정보처리방침</a>
   &nbsp;·&nbsp;
-  <span>문의: <a href="mailto:histy.project@gmail.com" style="color:#555;text-decoration:none;" onmouseover="this.style.color='#888'" onmouseout="this.style.color='#555'">histy.project@gmail.com</a></span>
+  <span>문의: <a href="/cdn-cgi/l/email-protection#543c3d27202d7a24263b3e313720143339353d387a373b39" style="color:#555;text-decoration:none;" onmouseover="this.style.color='#888'" onmouseout="this.style.color='#555'"><span class="__cf_email__" data-cfemail="9df5f4eee9e4b3edeff2f7f8fee9ddfaf0fcf4f1b3fef2f0">[email&#160;protected]</span></a></span>
   &nbsp;·&nbsp;
   <span style="color:#333;">© 2026 아무말</span>
 </footer>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 const SUPABASE_URL='https://oathqvxogecbrpswnjxk.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hdGhxdnhvZ2VjYnJwc3duanhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNTA5NDYsImV4cCI6MjA4ODYyNjk0Nn0.zrieOYKfxDB4r_czc8dz-bA33Yr_LR7BdWqWA_SZQb8';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
@@ -421,13 +434,37 @@ let postCooldownTimer=null, latestPostId=null, newPostCount=0;
 let searchQuery='', searchTimer=null;
 let pollActive=false;
 let userVotes={}; // {postId: optionIndex}
+let commentImages=[]; // 댓글 이미지
+let replyImages={}; // {parentId: [images]}
+let myIp=''; // 사용자 IP
 
 window.onload=async()=>{
   showSkeleton();
   loadHotissue();
+  // IP 가져오기 (글 로드 전에 완료)
+  try{
+    const r=await fetch('https://api.ipify.org?format=json');
+    const d=await r.json();
+    myIp=d.ip||'';
+  }catch(e){
+    // ipify 실패 시 백업 API
+    try{
+      const r=await fetch('https://api64.ipify.org?format=json');
+      const d=await r.json();
+      myIp=d.ip||'';
+    }catch{}
+  }
+  // 차단 여부 체크 (IP 확보 후)
+  if(myIp){
+    try{
+      const{data:banned}=await sb.from('banned_ips').select('ip').eq('ip',myIp).maybeSingle();
+      if(banned){
+        document.getElementById('writeBox').innerHTML=`<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px;">⛔ 이용이 제한된 사용자입니다.</div>`;
+      }
+    }catch{}
+  }
   await loadPosts();
   startAutoRefresh();
-  // 저장된 투표 내역 불러오기
   try { userVotes=JSON.parse(localStorage.getItem('amuVotes')||'{}'); } catch{}
 };
 
@@ -668,6 +705,11 @@ async function submitPost(){
   if(now-lastPostTime<POST_COOLDOWN){
     showToast(`${Math.ceil((POST_COOLDOWN-(now-lastPostTime))/1000)}초 후 가능`);return;
   }
+  // IP 차단 체크
+  if(myIp){
+    const{data:banned}=await sb.from('banned_ips').select('ip').eq('ip',myIp).maybeSingle();
+    if(banned){showToast('⛔ 이용이 제한된 사용자입니다.');return;}
+  }
 
   // 투표 유효성
   let pollData=null;
@@ -685,7 +727,7 @@ async function submitPost(){
     const tag=document.getElementById('writeTag').value;
     const{error}=await sb.from('posts').insert({
       tag,content,images:selectedImages,up:0,down:0,report_count:0,hidden:false,
-      poll:pollData,poll_votes:[]
+      poll:pollData,poll_votes:[],ip:myIp
     });
     if(error)throw error;
     document.getElementById('writeContent').value='';
@@ -859,6 +901,7 @@ function renderComment(c,replies=[]){
         <span class="comment-time">${timeAgo(r.created_at)}</span>
       </div>
       <div class="comment-text">${escHtml(r.content)}</div>
+      ${(r.images&&r.images.length)?`<div class="comment-img-wrap">${r.images.map(src=>`<img src="${src}" alt="" onclick="openLightbox('${src}')" style="margin-right:6px;margin-bottom:4px;">`).join('')}</div>`:''}
       <div class="comment-actions">
         <button class="comment-like-btn" onclick="likeComment(${r.id},this)">👍 ${r.up||0}</button>
         <button class="comment-report-btn" onclick="openReport('comment',${r.id})">신고</button>
@@ -871,14 +914,20 @@ function renderComment(c,replies=[]){
         <span class="comment-time">${timeAgo(c.created_at)}</span>
       </div>
       <div class="comment-text">${escHtml(c.content)}</div>
+      ${(c.images&&c.images.length)?`<div class="comment-img-wrap">${c.images.map(src=>`<img src="${src}" alt="" onclick="openLightbox('${src}')" style="margin-right:6px;margin-bottom:4px;">`).join('')}</div>`:''}
       <div class="comment-actions">
         <button class="comment-like-btn" onclick="likeComment(${c.id},this)">👍 ${c.up||0}</button>
         <button class="reply-toggle-btn" onclick="toggleReply(${c.id})">↩ 답글</button>
         <button class="comment-report-btn" onclick="openReport('comment',${c.id})">신고</button>
       </div>
       <div class="reply-write" id="replyWrite-${c.id}">
-        <input class="reply-input" id="replyInput-${c.id}" placeholder="답글 입력..." maxlength="200">
-        <button class="reply-submit" onclick="submitReply(${c.id})">등록</button>
+        <div class="reply-write-inner">
+          <label class="comment-img-label" for="replyImgInput-${c.id}">📷</label>
+          <input type="file" id="replyImgInput-${c.id}" accept="image/*" multiple style="display:none" onchange="handleReplyImageSelect(this,${c.id})">
+          <input class="reply-input" id="replyInput-${c.id}" placeholder="답글 입력..." maxlength="200">
+          <button class="reply-submit" onclick="submitReply(${c.id})">등록</button>
+        </div>
+        <div class="comment-img-preview" id="replyImgPreview-${c.id}"></div>
       </div>
     </div>${repliesHtml}`;
 }
@@ -921,14 +970,21 @@ async function likeComment(id,btn){
 async function submitComment(){
   const input=document.getElementById('commentInput');
   const text=input.value.trim();
-  if(!text||!currentPostId)return;
-  if(hasBannedWord(text)){showToast('사용할 수 없는 단어 포함');return;}
+  if(!text&&!commentImages.length||!currentPostId)return;
+  if(text&&hasBannedWord(text)){showToast('사용할 수 없는 단어 포함');return;}
+  if(myIp){
+    const{data:banned}=await sb.from('banned_ips').select('ip').eq('ip',myIp).maybeSingle();
+    if(banned){showToast('⛔ 이용이 제한된 사용자입니다.');return;}
+  }
   try{
-    await sb.from('comments').insert({post_id:currentPostId,content:text,up:0});
-    const newCount=(currentPostData?.comment_count||0)+1;
-    await sb.from('posts').update({comment_count:newCount}).eq('id',currentPostId);
-    if(currentPostData)currentPostData.comment_count=newCount;
+    await sb.from('comments').insert({post_id:currentPostId,content:text,up:0,images:commentImages,ip:myIp});
+    try{
+      const newCount=(currentPostData?.comment_count||0)+1;
+      await sb.from('posts').update({comment_count:newCount}).eq('id',currentPostId);
+      if(currentPostData)currentPostData.comment_count=newCount;
+    }catch{}
     input.value='';input.style.height='40px';
+    commentImages=[];renderCommentImgPreview();
     await loadComments(currentPostId);
     showToast('댓글 등록됐어요');
     setTimeout(()=>{document.querySelector('.detail-panel').scrollTop=99999;},100);
@@ -938,14 +994,112 @@ async function submitComment(){
 async function submitReply(parentId){
   const input=document.getElementById(`replyInput-${parentId}`);
   const text=input.value.trim();
-  if(!text||!currentPostId)return;
-  if(hasBannedWord(text)){showToast('사용할 수 없는 단어 포함');return;}
+  const imgs=replyImages[parentId]||[];
+  if(!text&&!imgs.length||!currentPostId)return;
+  if(text&&hasBannedWord(text)){showToast('사용할 수 없는 단어 포함');return;}
+  if(myIp){
+    const{data:banned}=await sb.from('banned_ips').select('ip').eq('ip',myIp).maybeSingle();
+    if(banned){showToast('⛔ 이용이 제한된 사용자입니다.');return;}
+  }
   try{
-    await sb.from('comments').insert({post_id:currentPostId,parent_id:parentId,content:text,up:0});
-    const newCount=(currentPostData?.comment_count||0)+1;
-    await sb.from('posts').update({comment_count:newCount}).eq('id',currentPostId);
-    if(currentPostData)currentPostData.comment_count=newCount;
+    await sb.from('comments').insert({post_id:currentPostId,parent_id:parentId,content:text,up:0,images:imgs,ip:myIp});
+    try{
+      const newCount=(currentPostData?.comment_count||0)+1;
+      await sb.from('posts').update({comment_count:newCount}).eq('id',currentPostId);
+      if(currentPostData)currentPostData.comment_count=newCount;
+    }catch{}
     input.value='';
+    replyImages[parentId]=[];
+    document.getElementById(`replyWrite-${parentId}`).classList.remove('open');
+    await loadComments(currentPostId);
+    showToast('답글 등록됐어요');
+  }catch(e){showToast('오류: '+e.message);}
+}
+function compressImage(file,callback){
+  const img=new Image(),url=URL.createObjectURL(file);
+  img.onload=()=>{
+    const canvas=document.createElement('canvas');
+    const max=600;let w=img.width,h=img.height;
+    if(w>max){h=h*(max/w);w=max;}if(h>max){w=w*(max/h);h=max;}
+    canvas.width=w;canvas.height=h;
+    canvas.getContext('2d').drawImage(img,0,0,w,h);
+    callback(canvas.toDataURL('image/jpeg',0.7));
+    URL.revokeObjectURL(url);
+  };img.src=url;
+}
+
+function handleCommentImageSelect(input){
+  const files=Array.from(input.files);
+  const remaining=2-commentImages.length;
+  if(!remaining){showToast('댓글 이미지는 최대 2장');return;}
+  files.slice(0,remaining).forEach(f=>compressImage(f,data=>{
+    commentImages.push(data);renderCommentImgPreview();
+  }));
+  input.value='';
+}
+
+function renderCommentImgPreview(){
+  document.getElementById('commentImgPreview').innerHTML=commentImages.map((src,i)=>
+    `<div class="comment-img-preview-item"><img src="${src}"><button onclick="removeCommentImg(${i})">✕</button></div>`).join('');
+}
+function removeCommentImg(i){commentImages.splice(i,1);renderCommentImgPreview();}
+
+function handleReplyImageSelect(input,parentId){
+  const files=Array.from(input.files);
+  if(!replyImages[parentId])replyImages[parentId]=[];
+  const remaining=2-replyImages[parentId].length;
+  if(!remaining){showToast('답글 이미지는 최대 2장');return;}
+  files.slice(0,remaining).forEach(f=>compressImage(f,data=>{
+    replyImages[parentId].push(data);renderReplyImgPreview(parentId);
+  }));
+  input.value='';
+}
+
+function renderReplyImgPreview(parentId){
+  const el=document.getElementById(`replyImgPreview-${parentId}`);
+  if(!el)return;
+  el.innerHTML=(replyImages[parentId]||[]).map((src,i)=>
+    `<div class="comment-img-preview-item"><img src="${src}"><button onclick="removeReplyImg(${parentId},${i})">✕</button></div>`).join('');
+}
+function removeReplyImg(parentId,i){replyImages[parentId].splice(i,1);renderReplyImgPreview(parentId);}
+
+// ── 댓글 작성 ──
+async function submitComment(){
+  const input=document.getElementById('commentInput');
+  const text=input.value.trim();
+  if(!text&&!commentImages.length||!currentPostId)return;
+  if(text&&hasBannedWord(text)){showToast('사용할 수 없는 단어 포함');return;}
+  try{
+    await sb.from('comments').insert({post_id:currentPostId,content:text,up:0,images:commentImages});
+    // 트리거가 없을 경우 수동으로도 업데이트
+    try{
+      const newCount=(currentPostData?.comment_count||0)+1;
+      await sb.from('posts').update({comment_count:newCount}).eq('id',currentPostId);
+      if(currentPostData)currentPostData.comment_count=newCount;
+    }catch{}
+    input.value='';input.style.height='40px';
+    commentImages=[];renderCommentImgPreview();
+    await loadComments(currentPostId);
+    showToast('댓글 등록됐어요');
+    setTimeout(()=>{document.querySelector('.detail-panel').scrollTop=99999;},100);
+  }catch(e){showToast('오류: '+e.message);}
+}
+
+async function submitReply(parentId){
+  const input=document.getElementById(`replyInput-${parentId}`);
+  const text=input.value.trim();
+  const imgs=replyImages[parentId]||[];
+  if(!text&&!imgs.length||!currentPostId)return;
+  if(text&&hasBannedWord(text)){showToast('사용할 수 없는 단어 포함');return;}
+  try{
+    await sb.from('comments').insert({post_id:currentPostId,parent_id:parentId,content:text,up:0,images:imgs});
+    try{
+      const newCount=(currentPostData?.comment_count||0)+1;
+      await sb.from('posts').update({comment_count:newCount}).eq('id',currentPostId);
+      if(currentPostData)currentPostData.comment_count=newCount;
+    }catch{}
+    input.value='';
+    replyImages[parentId]=[];
     document.getElementById(`replyWrite-${parentId}`).classList.remove('open');
     await loadComments(currentPostId);
     showToast('답글 등록됐어요');
@@ -1018,11 +1172,4 @@ function timeAgo(ts){
 function autoResize(el){el.style.height='40px';el.style.height=Math.min(el.scrollHeight,120)+'px';}
 
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeDetail();closeLightbox();document.getElementById('reportModal').classList.remove('open');}
-});
-document.getElementById('commentInput').addEventListener('keydown',e=>{
-  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submitComment();}
-});
-</script>
-</body>
-</html>
+  if(e.key==='Escape'){closeDetail();closeLigh
