@@ -308,30 +308,63 @@ function updateDelBtns(){
 // ── 글 작성 ──
 function onWriteInput(el){document.getElementById('charCount').textContent=`${el.value.length}/500`;}
 
+// 이미지를 canvas로 압축 후 Supabase Storage에 업로드, URL 반환
+async function uploadImageToStorage(file, folder='posts'){
+  return new Promise((resolve)=>{
+    const img=new Image(), url=URL.createObjectURL(file);
+    img.onload=async()=>{
+      const canvas=document.createElement('canvas');
+      const max=800; let w=img.width, h=img.height;
+      if(w>max){h=h*(max/w);w=max;} if(h>max){w=w*(max/h);h=max;}
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(async(blob)=>{
+        const filename=`${folder}/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+        const{data,error}=await sb.storage.from('images').upload(filename, blob, {contentType:'image/jpeg'});
+        if(error){resolve(null);return;}
+        const{data:pub}=sb.storage.from('images').getPublicUrl(filename);
+        resolve(pub.publicUrl);
+      },'image/jpeg',0.75);
+    };
+    img.onerror=()=>resolve(null);
+    img.src=url;
+  });
+}
+
 function handleImageSelect(input){
   const files=Array.from(input.files);
   const remaining=MAX_IMAGES-selectedImages.length;
   if(files.length>remaining)showToast(`최대 ${MAX_IMAGES}장`);
   files.slice(0,remaining).forEach(file=>{
-    const img=new Image(),url=URL.createObjectURL(file);
-    img.onload=()=>{
-      const canvas=document.createElement('canvas');
-      const max=800;let w=img.width,h=img.height;
-      if(w>max){h=h*(max/w);w=max;}if(h>max){w=w*(max/h);h=max;}
-      canvas.width=w;canvas.height=h;
-      canvas.getContext('2d').drawImage(img,0,0,w,h);
-      selectedImages.push(canvas.toDataURL('image/jpeg',0.75));
-      renderPreview();URL.revokeObjectURL(url);
-    };
-    img.src=url;
+    const url=URL.createObjectURL(file);
+    // 미리보기는 로컬 URL로 즉시 표시
+    const tempId='tmp_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    selectedImages.push({url, file, tempId, uploaded:null});
+    renderPreview();
   });
   input.value='';
 }
 function renderPreview(){
-  document.getElementById('previewImages').innerHTML=selectedImages.map((src,i)=>
-    `<div class="preview-img"><img src="${src}" alt=""><button class="remove-img" onclick="removeImage(${i})">✕</button></div>`).join('');
+  document.getElementById('previewImages').innerHTML=selectedImages.map((img,i)=>
+    `<div class="preview-img"><img src="${img.url||img}" alt=""><button class="remove-img" onclick="removeImage(${i})">✕</button></div>`).join('');
 }
-function removeImage(i){selectedImages.splice(i,1);renderPreview();}
+function removeImage(i){
+  const img=selectedImages[i];
+  if(img && img.url && img.url.startsWith('blob:')) URL.revokeObjectURL(img.url);
+  selectedImages.splice(i,1); renderPreview();
+}
+
+// 선택된 이미지들을 Storage에 업로드하고 URL 배열 반환
+async function uploadSelectedImages(folder='posts'){
+  const urls=[];
+  for(const img of selectedImages){
+    if(typeof img==='string'){urls.push(img);continue;} // 이미 URL
+    const url=await uploadImageToStorage(img.file, folder);
+    if(url) urls.push(url);
+  }
+  return urls;
+}
 
 async function submitPost(){
   const content=document.getElementById('writeContent').value.trim();
@@ -362,8 +395,10 @@ async function submitPost(){
   try{
     const tag=document.getElementById('writeTag').value;
     const title=document.getElementById('writeTitle').value.trim();
+    // 이미지 Storage 업로드
+    const imageUrls=await uploadSelectedImages('posts');
     const{error}=await sb.from('posts').insert({
-      tag,title:title||null,content,images:selectedImages,up:0,down:0,report_count:0,hidden:false,
+      tag,title:title||null,content,images:imageUrls,up:0,down:0,report_count:0,hidden:false,
       poll:pollData,poll_votes:[],ip:myIp
     });
     if(error)throw error;
@@ -631,7 +666,8 @@ async function submitComment(){
     if(banned){showToast('⛔ 이용이 제한된 사용자입니다.');return;}
   }
   try{
-    await sb.from('comments').insert({post_id:currentPostId,content:text,up:0,images:commentImages,ip:myIp});
+    const uploadedImgs=await uploadCommentImages(commentImages,'comments');
+    await sb.from('comments').insert({post_id:currentPostId,content:text,up:0,images:uploadedImgs,ip:myIp});
     try{
       const newCount=(currentPostData?.comment_count||0)+1;
       await sb.from('posts').update({comment_count:newCount}).eq('id',currentPostId);
@@ -656,7 +692,8 @@ async function submitReply(parentId){
     if(banned){showToast('⛔ 이용이 제한된 사용자입니다.');return;}
   }
   try{
-    await sb.from('comments').insert({post_id:currentPostId,parent_id:parentId,content:text,up:0,images:imgs,ip:myIp});
+    const uploadedImgs=await uploadCommentImages(imgs,'comments');
+    await sb.from('comments').insert({post_id:currentPostId,parent_id:parentId,content:text,up:0,images:uploadedImgs,ip:myIp});
     try{
       const newCount=(currentPostData?.comment_count||0)+1;
       await sb.from('posts').update({comment_count:newCount}).eq('id',currentPostId);
@@ -686,36 +723,58 @@ function handleCommentImageSelect(input){
   const files=Array.from(input.files);
   const remaining=2-commentImages.length;
   if(!remaining){showToast('댓글 이미지는 최대 2장');return;}
-  files.slice(0,remaining).forEach(f=>compressImage(f,data=>{
-    commentImages.push(data);renderCommentImgPreview();
-  }));
+  files.slice(0,remaining).forEach(f=>{
+    const url=URL.createObjectURL(f);
+    commentImages.push({url,file:f});
+    renderCommentImgPreview();
+  });
   input.value='';
 }
 
 function renderCommentImgPreview(){
-  document.getElementById('commentImgPreview').innerHTML=commentImages.map((src,i)=>
-    `<div class="comment-img-preview-item"><img src="${src}"><button onclick="removeCommentImg(${i})">✕</button></div>`).join('');
+  document.getElementById('commentImgPreview').innerHTML=commentImages.map((img,i)=>
+    `<div class="comment-img-preview-item"><img src="${img.url||img}"><button onclick="removeCommentImg(${i})">✕</button></div>`).join('');
 }
-function removeCommentImg(i){commentImages.splice(i,1);renderCommentImgPreview();}
+function removeCommentImg(i){
+  const img=commentImages[i];
+  if(img&&img.url&&img.url.startsWith('blob:'))URL.revokeObjectURL(img.url);
+  commentImages.splice(i,1);renderCommentImgPreview();
+}
 
 function handleReplyImageSelect(input,parentId){
   const files=Array.from(input.files);
   if(!replyImages[parentId])replyImages[parentId]=[];
   const remaining=2-replyImages[parentId].length;
   if(!remaining){showToast('답글 이미지는 최대 2장');return;}
-  files.slice(0,remaining).forEach(f=>compressImage(f,data=>{
-    replyImages[parentId].push(data);renderReplyImgPreview(parentId);
-  }));
+  files.slice(0,remaining).forEach(f=>{
+    const url=URL.createObjectURL(f);
+    replyImages[parentId].push({url,file:f});
+    renderReplyImgPreview(parentId);
+  });
   input.value='';
 }
 
 function renderReplyImgPreview(parentId){
   const el=document.getElementById(`replyImgPreview-${parentId}`);
   if(!el)return;
-  el.innerHTML=(replyImages[parentId]||[]).map((src,i)=>
-    `<div class="comment-img-preview-item"><img src="${src}"><button onclick="removeReplyImg(${parentId},${i})">✕</button></div>`).join('');
+  el.innerHTML=(replyImages[parentId]||[]).map((img,i)=>
+    `<div class="comment-img-preview-item"><img src="${img.url||img}"><button onclick="removeReplyImg(${parentId},${i})">✕</button></div>`).join('');
 }
-function removeReplyImg(parentId,i){replyImages[parentId].splice(i,1);renderReplyImgPreview(parentId);}
+function removeReplyImg(parentId,i){
+  const imgs=replyImages[parentId]||[];
+  if(imgs[i]&&imgs[i].url&&imgs[i].url.startsWith('blob:'))URL.revokeObjectURL(imgs[i].url);
+  imgs.splice(i,1);renderReplyImgPreview(parentId);
+}
+
+async function uploadCommentImages(imgs, folder='comments'){
+  const urls=[];
+  for(const img of imgs){
+    if(typeof img==='string'){urls.push(img);continue;}
+    const url=await uploadImageToStorage(img.file, folder);
+    if(url)urls.push(url);
+  }
+  return urls;
+}
 
 // ── 신고 ──
 function openReport(type,id){reportTarget={type,id};document.getElementById('reportModal').classList.add('open');}
