@@ -30,13 +30,14 @@ let readPostIds=new Set(); // 읽은 글 ID 목록
 window.onload=async()=>{
   showSkeleton();
   loadHotissue();
+  loadNotices();
+  loadBannedWordsFromDB();
   // IP 가져오기 (글 로드 전에 완료)
   try{
     const r=await fetch('https://api.ipify.org?format=json');
     const d=await r.json();
     myIp=d.ip||'';
   }catch(e){
-    // ipify 실패 시 백업 API
     try{
       const r=await fetch('https://api64.ipify.org?format=json');
       const d=await r.json();
@@ -57,6 +58,33 @@ window.onload=async()=>{
   try { userVotes=JSON.parse(localStorage.getItem('amuVotes')||'{}'); } catch{}
   try { readPostIds=new Set(JSON.parse(localStorage.getItem('amuRead')||'[]')); } catch{}
 };
+
+
+// ── 공지사항 ──
+let dbBannedWords=[];
+
+async function loadNotices(){
+  try{
+    const{data}=await sb.from('notices').select('*').eq('active',true).order('created_at',{ascending:false});
+    const list=data||[];
+    const el=document.getElementById('noticeList');
+    if(!list.length){el.innerHTML='';return;}
+    el.innerHTML=`<div class="notice-list">${list.map(n=>`
+      <div class="notice-item" onclick="openPost(${n.post_id||0})">
+        <span class="notice-badge">📢 공지</span>
+        <span class="notice-text">${escHtml(n.content)}</span>
+        <span class="notice-time">${timeAgo(n.created_at)}</span>
+      </div>`).join('')}</div>`;
+  }catch{}
+}
+
+// ── 금칙어 DB ──
+async function loadBannedWordsFromDB(){
+  try{
+    const{data}=await sb.from('banned_words').select('word');
+    dbBannedWords=(data||[]).map(r=>r.word);
+  }catch{}
+}
 
 // ── 오늘의 떡밥 ──
 function loadHotissue(){
@@ -353,7 +381,9 @@ async function submitPost(){
   }
 }
 
-function hasBannedWord(t){return BANNED_WORDS.some(w=>t.includes(w));}
+function hasBannedWord(t){
+  return BANNED_WORDS.some(w=>t.includes(w))||dbBannedWords.some(w=>t.includes(w));
+}
 
 function startCooldown(){
   const btn=document.getElementById('submitBtn');
