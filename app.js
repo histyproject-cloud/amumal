@@ -215,7 +215,7 @@ function renderList(posts,highlight=''){
           :`<div class="empty-state"><div>🌑</div><p>아직 글이 없어요</p></div>`));
     return;
   }
-  const adSlot=()=>`<div class="ad-slot" style="margin:6px 0 10px"><div class="ad-slot-label">ADVERTISEMENT</div><span>광고 영역 (320×100)</span></div>`;
+  const adSlot=()=>`<div style="text-align:center;margin:6px 0 10px"><ins class="kakao_ad_area" style="display:none;" data-ad-unit="DAN-HtdegUpTjzzU6hEh" data-ad-width="320" data-ad-height="100"></ins></div>`;
   const cards=filtered.map(p=>renderPostCard(p,highlight));
   const withAds=[];
   cards.forEach((card,i)=>{
