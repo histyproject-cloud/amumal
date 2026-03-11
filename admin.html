@@ -340,28 +340,57 @@ async function loadReports() {
     if (error) throw error;
     document.getElementById('reportCount').textContent = (data||[]).length;
     if (!data || !data.length) {
-      document.getElementById('reportsList').innerHTML = '<table class="admin-table"><tr class="empty-row"><td colspan="5">신고가 없어요</td></tr></table>'; return;
+      document.getElementById('reportsList').innerHTML = '<table class="admin-table"><tr class="empty-row"><td colspan="4">신고가 없어요</td></tr></table>'; return;
     }
+
+    // 신고된 글/댓글 내용 함께 불러오기
+    const postIds = [...new Set(data.filter(r=>r.target_type==='post').map(r=>r.target_id))];
+    const commentIds = [...new Set(data.filter(r=>r.target_type==='comment').map(r=>r.target_id))];
+    const [postsRes, commentsRes] = await Promise.all([
+      postIds.length ? sb.from('posts').select('id,tag,content,ip,hidden').in('id', postIds) : {data:[]},
+      commentIds.length ? sb.from('comments').select('id,content,ip,hidden,post_id').in('id', commentIds) : {data:[]}
+    ]);
+    const postsMap = Object.fromEntries((postsRes.data||[]).map(p=>[p.id, p]));
+    const commentsMap = Object.fromEntries((commentsRes.data||[]).map(c=>[c.id, c]));
+
     document.getElementById('reportsList').innerHTML = `
       <table class="admin-table">
         <thead><tr>
-          <th>유형</th><th>대상 ID</th><th>사유</th><th>시간</th><th>처리</th>
+          <th>유형</th><th>신고 내용</th><th>사유</th><th>처리</th>
         </tr></thead>
-        <tbody>${data.map(r => `
+        <tbody>${data.map(r => {
+          const isPost = r.target_type === 'post';
+          const target = isPost ? postsMap[r.target_id] : commentsMap[r.target_id];
+          const content = target?.content || '(내용 없음/삭제됨)';
+          const ip = target?.ip || '';
+          const hidden = target?.hidden;
+          return `
           <tr>
-            <td><span class="report-badge">${r.target_type === 'post' ? '게시글' : '댓글'}</span></td>
-            <td style="color:var(--text2)">#${r.target_id}</td>
-            <td>${escHtml(r.reason||'-')}</td>
-            <td style="color:var(--text3)">${timeAgo(r.created_at)}</td>
             <td>
-              ${r.target_type === 'post' ? `
-                <button class="btn-delete" onclick="deletePost(${r.target_id})">글 삭제</button>
-                <button class="btn-restore" onclick="restorePost(${r.target_id})" style="margin-left:4px">숨김 해제</button>
+              <span class="report-badge">${isPost ? '게시글' : '댓글'}</span>
+              <div style="font-size:10px;color:var(--text3);margin-top:3px">#${r.target_id}</div>
+            </td>
+            <td class="content-cell">
+              <div style="color:var(--text);margin-bottom:4px">${escHtml(content)}${hidden ? ' <span class="hidden-badge">숨김</span>' : ''}</div>
+              ${ip ? `<code style="font-size:11px;background:var(--bg3);color:var(--yellow);padding:1px 6px;border-radius:4px;cursor:pointer;border:1px solid var(--border2)" onclick="quickBanIp('${escHtml(ip)}')" title="클릭 → 차단">🌐 ${escHtml(ip)}</code>` : ''}
+              <div style="font-size:10px;color:var(--text3);margin-top:3px">${timeAgo(r.created_at)}</div>
+            </td>
+            <td style="color:var(--text2)">${escHtml(r.reason||'-')}</td>
+            <td style="display:flex;gap:4px;flex-wrap:wrap">
+              ${isPost ? `
+                <button class="btn-delete" onclick="deletePost(${r.target_id})">삭제</button>
+                ${hidden
+                  ? `<button class="btn-restore" onclick="restorePost(${r.target_id})">복원</button>`
+                  : `<button class="btn-restore" onclick="hidePost(${r.target_id})">숨김</button>`}
               ` : `
-                <button class="btn-delete" onclick="deleteComment(${r.target_id})">댓글 삭제</button>
+                <button class="btn-delete" onclick="deleteComment(${r.target_id})">삭제</button>
+                ${hidden
+                  ? `<button class="btn-restore" onclick="restoreComment(${r.target_id})">복원</button>`
+                  : `<button class="btn-restore" onclick="hideComment(${r.target_id})">숨김</button>`}
               `}
             </td>
-          </tr>`).join('')}
+          </tr>`;
+        }).join('')}
         </tbody>
       </table>`;
   } catch(e) { document.getElementById('reportsList').innerHTML = `<div class="loading">오류: ${e.message}</div>`; }
