@@ -7,6 +7,19 @@ const REPORT_THRESHOLD=5;
 const MAX_IMAGES=3;
 const BANNED_WORDS=['시발','씨발','개새끼','병신','ㅅㅂ','ㅄ','ㅂㅅ','지랄','fuck','shit'];
 
+const AMUMALS=[
+  {title:'요즘 가장 많이 드는 생각이 뭐예요?', sub:'솔직하게 털어놔요'},
+  {title:'인생에서 후회하는 선택 하나만 꼽는다면?', sub:'바꿀 수 있다면 뭘 바꿀건지'},
+  {title:'지금 이 순간 가장 먹고 싶은 게 뭐예요?', sub:'야식 고민 중이라면 같이 얘기해요'},
+  {title:'최근에 갑자기 보고 싶어진 사람 있어요?', sub:'연락은 했나요?'},
+  {title:'요즘 잠을 잘 자고 있나요?', sub:'수면 루틴 공유해봐요'},
+  {title:'살면서 가장 웃겼던 순간은?', sub:'그냥 생각나서 혼자 웃은 적 있잖아요'},
+  {title:'지금 당장 여행 가고 싶다면 어디?', sub:'이유도 알려줘요'},
+  {title:'나만 아는 꿀팁 하나 공유해봐요', sub:'생활, 공부, 뭐든 ok'},
+  {title:'요즘 나를 힘들게 하는 게 뭔지 털어놔요', sub:'판단 없이 들을게요'},
+  {title:'오늘 하루 어땠어요?', sub:'잘된 것도 안된 것도 다 얘기해요'},
+];
+
 let currentPostId=null, currentPostData=null, currentTab='recent';
 let lastPostTime=0, selectedImages=[], reportTarget={type:null,id:null};
 let postCooldownTimer=null, latestPostId=null, newPostCount=0;
@@ -22,6 +35,7 @@ let readPostIds=new Set(); // 읽은 글 ID 목록
 window.onload=async()=>{
   showSkeleton();
   loadNotices();
+  loadAmumal();
   loadBannedWordsFromDB();
   // IP 가져오기 (글 로드 전에 완료)
   try{
@@ -50,6 +64,21 @@ window.onload=async()=>{
   try { readPostIds=new Set(JSON.parse(localStorage.getItem('amuRead')||'[]')); } catch{}
 };
 
+
+// ── 오늘의 아무말 ──
+function loadAmumal(){
+  const idx=new Date().getDate()%AMUMALS.length;
+  const h=AMUMALS[idx];
+  document.getElementById('hotissueTitle').textContent=h.title;
+  document.getElementById('hotissueSub').textContent=h.sub;
+  document.getElementById('hotissueBanner').style.display='block';
+}
+function openHotissue(){
+  const idx=new Date().getDate()%AMUMALS.length;
+  const h=AMUMALS[idx];
+  document.getElementById('searchInput').value=h.title.split(' ')[0];
+  doSearch();
+}
 
 // ── 공지사항 ──
 let dbBannedWords=[];
@@ -90,6 +119,7 @@ async function doSearch(){
   if(!val){clearSearch();return;}
   searchQuery=val;
   document.getElementById('writeBox').style.display='none';
+  document.getElementById('hotissueBanner').style.display='none';
   document.getElementById('tabsBar').style.display='none';
   document.getElementById('newPostsBtn').style.display='none';
   document.getElementById('searchBanner').classList.add('show');
@@ -109,6 +139,7 @@ function clearSearch(){
   document.getElementById('searchClear').classList.remove('show');
   document.getElementById('searchBanner').classList.remove('show');
   document.getElementById('writeBox').style.display='block';
+  document.getElementById('hotissueBanner').style.display='block';
   document.getElementById('tabsBar').style.display='flex';
   showSkeleton();
   loadPosts();
