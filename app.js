@@ -430,8 +430,8 @@ async function openPost(id){
   document.body.style.overflow='hidden';
   document.querySelector('.detail-panel').scrollTop=0;
 
-  // 공유 링크 설정 (현재는 파일 경로, 배포 후엔 실제 URL)
-  const shareUrl=`${location.href.split('?')[0]}?post=${id}`;
+  // 공유 링크 - OG 태그 동적 생성용
+  const shareUrl=`https://amumal.site/api/og?post=${id}`;
   document.getElementById('shareLink').textContent=shareUrl;
   document.getElementById('shareLink').dataset.url=shareUrl;
 
