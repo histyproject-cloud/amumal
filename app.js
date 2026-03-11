@@ -24,6 +24,8 @@ let userVotes={}; // {postId: optionIndex}
 let commentImages=[]; // 댓글 이미지
 let replyImages={}; // {parentId: [images]}
 let myIp=''; // 사용자 IP
+let unreadOnly=false; // 안 본 글만 보기
+let readPostIds=new Set(); // 읽은 글 ID 목록
 
 window.onload=async()=>{
   showSkeleton();
@@ -53,6 +55,7 @@ window.onload=async()=>{
   await loadPosts();
   startAutoRefresh();
   try { userVotes=JSON.parse(localStorage.getItem('amuVotes')||'{}'); } catch{}
+  try { readPostIds=new Set(JSON.parse(localStorage.getItem('amuRead')||'[]')); } catch{}
 };
 
 // ── 오늘의 떡밥 ──
@@ -168,16 +171,20 @@ async function loadPosts(){
 
 function renderList(posts,highlight=''){
   const c=document.getElementById('postList');
-  if(!posts.length){
-    c.innerHTML=highlight
-      ?`<div class="empty-state"><div>🔍</div><p>"${escHtml(highlight)}" 결과 없음</p></div>`
-      :(currentTab==='debate'
-        ?`<div class="empty-state"><div>⚔️</div><p>아직 논쟁글이 없어요<br><small>공감+비공감 합 20 이상, 비율 30~70% 조건</small></p></div>`
-        :`<div class="empty-state"><div>🌑</div><p>아직 글이 없어요</p></div>`);
+  // 안 본 글 필터
+  const filtered=unreadOnly?posts.filter(p=>!readPostIds.has(p.id)):posts;
+  if(!filtered.length){
+    c.innerHTML=unreadOnly
+      ?`<div class="empty-state"><div>✅</div><p>안 본 글이 없어요</p></div>`
+      :(highlight
+        ?`<div class="empty-state"><div>🔍</div><p>"${escHtml(highlight)}" 결과 없음</p></div>`
+        :(currentTab==='debate'
+          ?`<div class="empty-state"><div>⚔️</div><p>아직 논쟁글이 없어요<br><small>공감+비공감 합 20 이상, 비율 30~70% 조건</small></p></div>`
+          :`<div class="empty-state"><div>🌑</div><p>아직 글이 없어요</p></div>`));
     return;
   }
   const adSlot=()=>`<div class="ad-slot" style="margin:6px 0 10px"><div class="ad-slot-label">ADVERTISEMENT</div><span>광고 영역 (320×100)</span></div>`;
-  const cards=posts.map(p=>renderPostCard(p,highlight));
+  const cards=filtered.map(p=>renderPostCard(p,highlight));
   const withAds=[];
   cards.forEach((card,i)=>{
     withAds.push(card);
@@ -221,6 +228,7 @@ function renderPostCard(p,highlight=''){
         <span class="tag-badge tag-${tag}">${p.tag||'잡담'}${poll?' ⚡':''}</span>
         <span class="post-time">${timeAgo(p.created_at)}</span>
       </div>
+      ${p.title?`<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;line-height:1.4">${escHtml(p.title)}</div>`:''}
       ${displayContent?`<div class="post-content">${displayContent}</div>`:''}
       ${pollHtml}
       ${thumbs?`<div class="post-thumb">${thumbs}</div>`:''}
@@ -321,12 +329,14 @@ async function submitPost(){
   btn.disabled=true;btn.textContent='올리는 중...';
   try{
     const tag=document.getElementById('writeTag').value;
+    const title=document.getElementById('writeTitle').value.trim();
     const{error}=await sb.from('posts').insert({
-      tag,content,images:selectedImages,up:0,down:0,report_count:0,hidden:false,
+      tag,title:title||null,content,images:selectedImages,up:0,down:0,report_count:0,hidden:false,
       poll:pollData,poll_votes:[],ip:myIp
     });
     if(error)throw error;
     document.getElementById('writeContent').value='';
+    document.getElementById('writeTitle').value='';
     document.getElementById('charCount').textContent='0/500';
     selectedImages=[];renderPreview();
     if(pollActive){
@@ -364,9 +374,20 @@ async function switchTab(tab,el){
   el.classList.add('active');showSkeleton();await loadPosts();
 }
 
+function toggleUnread(){
+  unreadOnly=!unreadOnly;
+  const btn=document.getElementById('unreadToggle');
+  btn.classList.toggle('on',unreadOnly);
+  btn.textContent=unreadOnly?'👁 안 본 글만 ✓':'👁 안 본 글만';
+  showSkeleton();loadPosts();
+}
+
 // ── 상세 ──
 async function openPost(id){
   currentPostId=id;
+  // 읽음 처리
+  readPostIds.add(id);
+  try{localStorage.setItem('amuRead',JSON.stringify([...readPostIds]));}catch{}
   document.getElementById('dContent').textContent='불러오는 중...';
   document.getElementById('commentList').innerHTML='';
   document.getElementById('dPoll').style.display='none';
@@ -388,6 +409,9 @@ async function openPost(id){
     document.getElementById('dTag').className=`tag-badge tag-${post.tag}`;
     document.getElementById('dTime').textContent=timeAgo(post.created_at);
     document.getElementById('dContent').textContent=post.content||'';
+    if(post.title){
+      document.getElementById('dContent').innerHTML=`<div style="font-size:18px;font-weight:700;margin-bottom:12px;line-height:1.4;color:var(--text)">${escHtml(post.title)}</div>${escHtml(post.content||'').replace(/\n/g,'<br>')}`;
+    }
     document.getElementById('upCount').textContent=post.up||0;
     document.getElementById('downCount').textContent=post.down||0;
     document.getElementById('upBtn').className='react-btn up';
