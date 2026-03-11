@@ -53,6 +53,8 @@
   /* 글쓰기 */
   .write-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin:16px 0;transition:border-color .2s;}
   .write-box:focus-within{border-color:var(--accent);}
+  .write-title-input{width:100%;background:transparent;border:none;border-bottom:1px solid var(--border2);outline:none;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:15px;font-weight:700;padding:0 0 8px;margin-bottom:10px;line-height:1.4;}
+  .write-title-input::placeholder{color:var(--text3);font-weight:400;}
   .write-box-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
   .anon-badge{background:var(--bg3);color:var(--text2);font-size:11px;padding:3px 8px;border-radius:20px;border:1px solid var(--border2);}
   .tag-select{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-size:12px;padding:3px 8px;border-radius:20px;cursor:pointer;outline:none;font-family:'Noto Sans KR',sans-serif;}
@@ -91,6 +93,8 @@
   .tabs::-webkit-scrollbar{display:none;}
   .tab-btn{background:none;border:none;color:var(--text2);font-size:12px;font-weight:500;padding:10px 12px;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px;font-family:'Noto Sans KR',sans-serif;white-space:nowrap;}
   .tab-btn.active{color:var(--text);border-bottom-color:var(--accent);}
+  .unread-toggle{background:none;border:1px solid var(--border2);color:var(--text3);font-size:11px;padding:4px 10px;border-radius:20px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap;transition:all .15s;margin-left:auto;margin-bottom:-1px;align-self:center;}
+  .unread-toggle.on{border-color:var(--green);color:var(--green);background:rgba(34,197,94,0.1);}
 
   /* 광고 */
   .ad-slot{background:var(--bg2);border:1px dashed var(--border2);border-radius:8px;padding:8px;text-align:center;margin-bottom:10px;color:var(--text3);font-size:11px;min-height:90px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;}
@@ -112,8 +116,8 @@
   .post-time{font-size:11px;color:var(--text3);margin-left:auto;}
   .post-content{color:var(--text);font-size:14px;line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:10px;word-break:break-all;}
   .highlight{background:rgba(255,68,68,0.25);color:var(--accent);border-radius:2px;padding:0 1px;}
-  .post-thumb{display:flex;gap:6px;margin-bottom:10px;}
-  .post-thumb img{width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--border2);}
+  .post-thumb{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+  .post-thumb img{width:calc(50% - 3px);max-width:200px;aspect-ratio:16/10;object-fit:cover;border-radius:6px;border:1px solid var(--border2);}
   .post-footer{display:flex;align-items:center;gap:12px;}
   .stat-item{display:flex;align-items:center;gap:4px;color:var(--text2);font-size:12px;}
   .hidden-post{text-align:center;color:var(--text3);font-size:12px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;}
@@ -163,8 +167,8 @@
   .detail-tag-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
   .detail-time{font-size:11px;color:var(--text3);}
   .detail-content{font-size:15px;line-height:1.8;color:var(--text);margin-bottom:16px;word-break:break-all;white-space:pre-wrap;}
-  .detail-images{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
-  .detail-images img{width:calc(75vw);max-width:420px;border-radius:8px;border:1px solid var(--border2);cursor:zoom-in;object-fit:cover;}
+  .detail-images{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+  .detail-images img{width:100%;border-radius:8px;border:1px solid var(--border2);cursor:zoom-in;object-fit:cover;}
   /* 댓글 이미지 */
   .comment-img-wrap{margin-top:6px;}
   .comment-img-wrap img{width:calc(60vw);max-width:300px;border-radius:6px;border:1px solid var(--border2);cursor:zoom-in;object-fit:cover;}
@@ -239,11 +243,21 @@
   @keyframes shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
   input[type=file]{display:none;}
 
+  /* 플로팅 버튼 */
+  .floating-btns{position:fixed;bottom:28px;right:20px;display:flex;flex-direction:column;gap:10px;z-index:150;}
+  .floating-btn{width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,0.5);transition:all .2s;font-family:'Noto Sans KR',sans-serif;}
+  .floating-btn.write-btn{background:var(--accent);color:white;}
+  .floating-btn.write-btn:hover{background:#ff2222;transform:scale(1.1);}
+  .floating-btn.top-btn{background:var(--bg3);color:var(--text2);border:1px solid var(--border2);font-size:16px;opacity:0;pointer-events:none;transform:translateY(10px);transition:all .25s;}
+  .floating-btn.top-btn.show{opacity:1;pointer-events:auto;transform:translateY(0);}
+  .floating-btn.top-btn:hover{background:var(--bg2);color:var(--text);border-color:var(--accent);}
+
   @media(max-width:480px){
     .logo span{display:none;}
     .search-wrap{max-width:160px;}
-    .detail-images img{max-width:140px;}
+  .post-thumb img{width:calc(50% - 3px);}
     .tab-btn{padding:10px 8px;font-size:11px;}
+    .floating-btns{bottom:20px;right:14px;}
   }
 </style>
 </head>
@@ -288,6 +302,7 @@
         <option value="자랑">자랑</option>
       </select>
     </div>
+    <input class="write-title-input" id="writeTitle" placeholder="제목 (선택사항)" maxlength="60">
     <textarea class="write-textarea" id="writeContent" placeholder="아무 말이나 써보세요..." maxlength="500" oninput="onWriteInput(this)"></textarea>
     <!-- VS 투표 작성 영역 -->
     <div class="poll-write" id="pollWrite" style="display:none">
@@ -326,6 +341,7 @@
     <button class="tab-btn" onclick="switchTab('hot',this)">인기글 🔥</button>
     <button class="tab-btn" onclick="switchTab('comments',this)">댓글많음 💬</button>
     <button class="tab-btn" onclick="switchTab('debate',this)">논쟁거리 ⚔️</button>
+    <button class="unread-toggle" id="unreadToggle" onclick="toggleUnread()">👁 안 본 글만</button>
   </div>
   <div class="new-posts-wrapper">
     <button class="new-posts-btn" id="newPostsBtn" onclick="loadNewPosts()">▲ 새 글 보기</button>
@@ -368,6 +384,10 @@
       </div>
     </div>
     <div class="comments-section">
+      <div class="ad-slot" style="margin:0 0 14px;min-height:80px;">
+        <div class="ad-slot-label">ADVERTISEMENT</div>
+        <span>광고 영역 (320×100)</span>
+      </div>
       <div class="comments-title" id="commentsTitle">댓글 0개</div>
       <div id="commentList"></div>
     </div>
@@ -402,6 +422,13 @@
   <img id="lightboxImg" src="" alt="">
 </div>
 <div class="toast" id="toast"></div>
+
+<!-- 플로팅 버튼들 -->
+<div class="floating-btns" id="floatingBtns">
+  <button class="floating-btn top-btn" id="topBtn" onclick="scrollToTop()" title="맨 위로 + 새로고침">↑</button>
+  <button class="floating-btn write-btn" onclick="scrollToWrite()" title="글쓰기">✏️</button>
+</div>
+
 <footer style="text-align:center;padding:24px 16px 40px;font-size:12px;color:#444;">
   <a href="/privacy.html" style="color:#555;text-decoration:none;" onmouseover="this.style.color='#888'" onmouseout="this.style.color='#555'">개인정보처리방침</a>
   &nbsp;·&nbsp;
