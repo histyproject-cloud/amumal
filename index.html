@@ -6,6 +6,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>아무말 - 익명 커뮤니티</title>
 <meta name="description" content="로그인 없이 아무 말이나 써보세요. 완전 익명 커뮤니티.">
+<!-- OG 태그 -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="아무말 - 익명 커뮤니티">
+<meta property="og:description" content="로그인 없이 아무 말이나 써보세요. 완전 익명 커뮤니티.">
+<meta property="og:url" content="https://amumal.site">
+<meta property="og:image" content="https://amumal.site/og-image.png">
+<meta property="og:site_name" content="아무말">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="아무말 - 익명 커뮤니티">
+<meta name="twitter:description" content="로그인 없이 아무 말이나 써보세요. 완전 익명 커뮤니티.">
+<!-- 파비콘 (SVG 인라인) -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f0f0f'/><text y='.9em' font-size='80' x='10'>💬</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -41,9 +53,16 @@
   .search-back-btn{background:none;border:1px solid var(--border2);color:var(--text2);font-size:11px;padding:3px 10px;border-radius:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
   .search-back-btn:hover{border-color:var(--accent);color:var(--accent);}
 
-  /* 오늘의 아무말 배너 */
+  /* 오늘의 떡밥 배너 */
   .hotissue-banner{background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid #2a2a4a;border-radius:12px;padding:14px 16px;margin:12px 0 8px;cursor:pointer;transition:border-color .2s;}
   .hotissue-banner:hover{border-color:#4a4aaa;}
+  /* 공지사항 */
+  .notice-list{display:flex;flex-direction:column;gap:6px;margin:10px 0 4px;}
+  .notice-item{background:linear-gradient(135deg,#1a1f1a,#1a2a1a);border:1px solid #2a4a2a;border-radius:10px;padding:12px 14px;cursor:pointer;transition:border-color .2s;display:flex;align-items:flex-start;gap:10px;}
+  .notice-item:hover{border-color:#4a8a4a;}
+  .notice-badge{background:#22c55e;color:#000;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap;flex-shrink:0;margin-top:2px;}
+  .notice-text{font-size:14px;color:var(--text);font-weight:500;flex:1;line-height:1.4;}
+  .notice-time{font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0;margin-top:2px;}
   .hotissue-label{font-size:10px;color:var(--purple);font-weight:700;letter-spacing:1px;margin-bottom:4px;}
   .hotissue-title{font-size:15px;font-weight:700;color:var(--text);}
   .hotissue-sub{font-size:12px;color:var(--text2);margin-top:2px;}
@@ -283,9 +302,12 @@
 </div>
 
 <div class="container" id="mainView">
-  <!-- 오늘의 아무말 -->
+  <!-- 공지사항 -->
+  <div id="noticeList"></div>
+
+  <!-- 오늘의 떡밥 -->
   <div class="hotissue-banner" id="hotissueBanner" onclick="openHotissue()" style="display:none">
-    <div class="hotissue-label">🔥 오늘의 아무말</div>
+    <div class="hotissue-label">🔥 오늘의 떡밥</div>
     <div class="hotissue-title" id="hotissueTitle"></div>
     <div class="hotissue-sub" id="hotissueSub"></div>
   </div>
@@ -440,4 +462,3 @@
 <script src="./app.js"></script>
 </body>
 </html>
-
