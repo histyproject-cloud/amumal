@@ -136,6 +136,7 @@
       <button class="admin-tab" onclick="switchAdminTab('reports', this)">🚨 신고</button>
       <button class="admin-tab" onclick="switchAdminTab('posts', this)">📝 게시글</button>
       <button class="admin-tab" onclick="switchAdminTab('comments', this)">💬 댓글</button>
+      <button class="admin-tab" onclick="switchAdminTab('notices', this)">📢 공지사항</button>
       <button class="admin-tab" onclick="switchAdminTab('banned', this)">🚫 금칙어</button>
       <button class="admin-tab" onclick="switchAdminTab('ipban', this)">⛔ IP 차단</button>
     </div>
@@ -193,18 +194,27 @@
       <div id="commentsList"><div class="loading">불러오는 중...</div></div>
     </div>
 
-    <!-- 금칙어 탭 -->
+    <!-- 공지사항 탭 -->
+    <div class="tab-content" id="tab-notices">
+      <div class="section-title">공지사항 <span class="count-badge" id="noticesCount">0</span></div>
+      <div class="add-banned-row" style="margin-bottom:16px;flex-direction:column;align-items:stretch;gap:8px;">
+        <input class="banned-input" id="noticeInput" placeholder="공지 내용 입력..." maxlength="200">
+        <div style="display:flex;gap:8px;">
+          <button class="btn-primary" onclick="addNotice()" style="flex:1">📢 공지 등록</button>
+        </div>
+      </div>
+      <div id="noticesList"><div class="loading">불러오는 중...</div></div>
+    </div>
+
+    <!-- 금칙어 탭 (Supabase 연동) -->
     <div class="tab-content" id="tab-banned">
-      <div class="section-title">금칙어 목록</div>
-      <div class="banned-list" id="bannedList"></div>
+      <div class="section-title">금칙어 목록 <span class="count-badge" id="bannedCount">0</span></div>
       <div class="add-banned-row">
         <input class="banned-input" id="bannedInput" placeholder="추가할 금칙어 입력..."
           onkeydown="if(event.key==='Enter') addBannedWord()">
         <button class="btn-primary" onclick="addBannedWord()">추가</button>
       </div>
-      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
-        <div style="font-size:12px; color:var(--text2); margin-bottom:8px;">💡 금칙어는 브라우저에 저장돼요. 여러 기기에서 관리하려면 Supabase에 테이블을 만드는 걸 추천해요.</div>
-      </div>
+      <div style="margin-top:12px;" id="bannedList"><div class="loading">불러오는 중...</div></div>
     </div>
 
     <!-- IP 차단 탭 -->
@@ -266,6 +276,7 @@ function switchAdminTab(tab, el) {
   if (tab === 'reports') loadReports();
   if (tab === 'posts') loadAllPosts();
   if (tab === 'comments') loadAllComments();
+  if (tab === 'notices') loadNotices();
   if (tab === 'banned') loadBannedWords();
   if (tab === 'ipban') loadBannedIps();
 }
@@ -504,47 +515,97 @@ async function quickBanIp(ip) {
 }
 
 // ══════════════════════════════
-// 금칙어
 // ══════════════════════════════
-function loadBannedWords() {
-  const words = getBannedWords();
-  document.getElementById('bannedList').innerHTML = words.length
-    ? words.map((w,i) => `
-        <div class="banned-word">
-          ${escHtml(w)}
-          <button class="banned-word-del" onclick="removeBannedWord(${i})">✕</button>
-        </div>`).join('')
-    : '<span style="color:var(--text3);font-size:12px">등록된 금칙어가 없어요</span>';
+// 공지사항
+// ══════════════════════════════
+async function loadNotices() {
+  document.getElementById('noticesList').innerHTML = '<div class="loading">불러오는 중...</div>';
+  const { data, error } = await sb.from('notices').select('*').order('created_at', { ascending: false });
+  if (error) { document.getElementById('noticesList').innerHTML = `<div style="color:var(--accent)">오류: ${error.message}</div>`; return; }
+  const list = data || [];
+  document.getElementById('noticesCount').textContent = list.length;
+  if (!list.length) { document.getElementById('noticesList').innerHTML = '<div style="color:var(--text3);font-size:13px;padding:16px 0">공지사항이 없어요</div>'; return; }
+  document.getElementById('noticesList').innerHTML = `
+    <table class="admin-table">
+      <thead><tr><th>내용</th><th>상태</th><th>시간</th><th>관리</th></tr></thead>
+      <tbody>${list.map(n => `
+        <tr>
+          <td class="content-cell">${escHtml(n.content)}</td>
+          <td>${n.active ? '<span style="color:var(--green);font-size:12px">공개중</span>' : '<span style="color:var(--text3);font-size:12px">숨김</span>'}</td>
+          <td style="color:var(--text3)">${timeAgo(n.created_at)}</td>
+          <td style="display:flex;gap:4px">
+            ${n.active
+              ? `<button class="btn-restore" onclick="toggleNotice(${n.id},false)">숨김</button>`
+              : `<button class="btn-restore" onclick="toggleNotice(${n.id},true)">공개</button>`}
+            <button class="btn-delete" onclick="deleteNotice(${n.id})">삭제</button>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
 }
 
-function getBannedWords() {
-  try { return JSON.parse(localStorage.getItem('amuBannedWords') || '[]'); } catch{ return []; }
+async function addNotice() {
+  const input = document.getElementById('noticeInput');
+  const content = input.value.trim();
+  if (!content) { showToast('내용을 입력해주세요'); return; }
+  const { error } = await sb.from('notices').insert({ content, active: true });
+  if (error) { showToast('오류: ' + error.message); return; }
+  input.value = '';
+  showToast('공지가 등록됐어요 📢');
+  loadNotices();
 }
 
-function saveBannedWords(words) {
-  localStorage.setItem('amuBannedWords', JSON.stringify(words));
+async function toggleNotice(id, active) {
+  const { error } = await sb.from('notices').update({ active }).eq('id', id);
+  if (error) { showToast('오류: ' + error.message); return; }
+  showToast(active ? '공지 공개됐어요' : '공지 숨김됐어요');
+  loadNotices();
 }
 
-function addBannedWord() {
+async function deleteNotice(id) {
+  if (!confirm('공지를 삭제할까요?')) return;
+  const { error } = await sb.from('notices').delete().eq('id', id);
+  if (error) { showToast('오류: ' + error.message); return; }
+  showToast('공지 삭제됐어요'); loadNotices();
+}
+
+// ══════════════════════════════
+// 금칙어 (Supabase 연동)
+// ══════════════════════════════
+async function loadBannedWords() {
+  document.getElementById('bannedList').innerHTML = '<div class="loading">불러오는 중...</div>';
+  const { data, error } = await sb.from('banned_words').select('*').order('created_at', { ascending: false });
+  if (error) { document.getElementById('bannedList').innerHTML = `<div style="color:var(--accent)">오류: ${error.message}</div>`; return; }
+  const list = data || [];
+  document.getElementById('bannedCount').textContent = list.length;
+  if (!list.length) { document.getElementById('bannedList').innerHTML = '<span style="color:var(--text3);font-size:12px">등록된 금칙어가 없어요</span>'; return; }
+  document.getElementById('bannedList').innerHTML = `<div class="banned-list">${list.map(w => `
+    <div class="banned-word">
+      ${escHtml(w.word)}
+      <button class="banned-word-del" onclick="removeBannedWord(${w.id},'${escHtml(w.word)}')">✕</button>
+    </div>`).join('')}</div>`;
+}
+
+async function addBannedWord() {
   const input = document.getElementById('bannedInput');
   const word = input.value.trim();
   if (!word) return;
-  const words = getBannedWords();
-  if (words.includes(word)) { showToast('이미 있는 금칙어예요'); return; }
-  words.push(word);
-  saveBannedWords(words);
+  const { error } = await sb.from('banned_words').insert({ word });
+  if (error) {
+    if (error.code === '23505') showToast('이미 있는 금칙어예요');
+    else showToast('오류: ' + error.message);
+    return;
+  }
   input.value = '';
-  loadBannedWords();
   showToast(`"${word}" 금칙어 추가됐어요`);
+  loadBannedWords();
 }
 
-function removeBannedWord(i) {
-  const words = getBannedWords();
-  const removed = words[i];
-  words.splice(i,1);
-  saveBannedWords(words);
+async function removeBannedWord(id, word) {
+  const { error } = await sb.from('banned_words').delete().eq('id', id);
+  if (error) { showToast('오류: ' + error.message); return; }
+  showToast(`"${word}" 삭제됐어요`);
   loadBannedWords();
-  showToast(`"${removed}" 삭제됐어요`);
 }
 
 // ══════════════════════════════
