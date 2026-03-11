@@ -5,15 +5,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const POST_COOLDOWN=30000;
 const REPORT_THRESHOLD=5;
 const MAX_IMAGES=3;
-const BANNED_WORDS=['시발','씨발','개새끼','병신','ㅅㅂ','ㅄ','ㅂㅅ'];
-
-// 오늘의 떡밥 목록 (관리자가 여기서 수정)
-const HOTISSUES=[
-  {title:'아이폰 vs 갤럭시', sub:'당신의 선택은?'},
-  {title:'치킨 vs 피자', sub:'야식으로 뭐 시킬래?'},
-  {title:'버스 vs 지하철', sub:'출퇴근 수단 선택'},
-  {title:'아메리카노 vs 라떼', sub:'오늘 커피는?'},
-];
+const BANNED_WORDS=['시발','씨발','개새끼','병신','ㅅㅂ','ㅄ','ㅂㅅ','지랄','fuck','shit'];
 
 let currentPostId=null, currentPostData=null, currentTab='recent';
 let lastPostTime=0, selectedImages=[], reportTarget={type:null,id:null};
@@ -29,7 +21,6 @@ let readPostIds=new Set(); // 읽은 글 ID 목록
 
 window.onload=async()=>{
   showSkeleton();
-  loadHotissue();
   loadNotices();
   loadBannedWordsFromDB();
   // IP 가져오기 (글 로드 전에 완료)
@@ -86,22 +77,6 @@ async function loadBannedWordsFromDB(){
   }catch{}
 }
 
-// ── 오늘의 떡밥 ──
-function loadHotissue(){
-  const idx=new Date().getDate()%HOTISSUES.length;
-  const h=HOTISSUES[idx];
-  document.getElementById('hotissueTitle').textContent=h.title;
-  document.getElementById('hotissueSub').textContent=h.sub;
-  document.getElementById('hotissueBanner').style.display='block';
-}
-function openHotissue(){
-  const idx=new Date().getDate()%HOTISSUES.length;
-  const h=HOTISSUES[idx];
-  // 떡밥 클릭 시 해당 키워드 검색
-  document.getElementById('searchInput').value=h.title.split(' vs ')[0];
-  doSearch();
-}
-
 // ── 검색 ──
 function onSearchInput(el){
   const val=el.value.trim();
@@ -115,7 +90,6 @@ async function doSearch(){
   if(!val){clearSearch();return;}
   searchQuery=val;
   document.getElementById('writeBox').style.display='none';
-  document.getElementById('hotissueBanner').style.display='none';
   document.getElementById('tabsBar').style.display='none';
   document.getElementById('newPostsBtn').style.display='none';
   document.getElementById('searchBanner').classList.add('show');
@@ -135,7 +109,6 @@ function clearSearch(){
   document.getElementById('searchClear').classList.remove('show');
   document.getElementById('searchBanner').classList.remove('show');
   document.getElementById('writeBox').style.display='block';
-  document.getElementById('hotissueBanner').style.display='block';
   document.getElementById('tabsBar').style.display='flex';
   showSkeleton();
   loadPosts();
