@@ -723,12 +723,18 @@ function closeReport(e){if(!e||e.target===document.getElementById('reportModal')
 
 async function submitReport(reason){
   try{
-    await sb.from('reports').insert({target_type:reportTarget.type,target_id:reportTarget.id||currentPostId,reason});
+    await sb.from('reports').insert({target_type:reportTarget.type,target_id:reportTarget.id||currentPostId,reason,ip:myIp});
     if(reportTarget.type==='post'&&currentPostData){
       const newCount=(currentPostData.report_count||0)+1;
       const hidden=newCount>=REPORT_THRESHOLD;
       await sb.from('posts').update({report_count:newCount,hidden}).eq('id',currentPostId);
       if(hidden){closeDetail();showToast('신고 누적으로 숨겨졌어요');}
+    }
+    if(reportTarget.type==='comment'&&reportTarget.id){
+      const{data:c}=await sb.from('comments').select('report_count').eq('id',reportTarget.id).maybeSingle();
+      const newCount=((c?.report_count)||0)+1;
+      const hidden=newCount>=REPORT_THRESHOLD;
+      await sb.from('comments').update({report_count:newCount,hidden}).eq('id',reportTarget.id);
     }
     closeReport();showToast('신고 접수됐어요');
     if(!searchQuery)loadPosts();
