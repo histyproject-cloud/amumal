@@ -419,10 +419,11 @@ async function loadAllPosts() {
         </tr></thead>
         <tbody>${data.map(p => `
           <tr>
-            <td><span class="tag-badge" style="font-size:10px;padding:2px 6px;border-radius:10px;background:var(--bg3);color:var(--text2)">${p.tag}</span></td>
+            <td><span class="tag-badge" style="font-size:10px;padding:2px 6px;border-radius:10px;background:var(--bg3);color:var(--text2)">${p.tag||'잡담'}</span></td>
             <td class="content-cell">
-              <div>${escHtml(p.content||'')} ${p.hidden ? '<span class="hidden-badge">숨김</span>' : ''}</div>
-              <div style="margin-top:3px">
+              <div style="white-space:pre-wrap;word-break:break-all">${escHtml(p.content||'')} ${p.hidden ? '<span class="hidden-badge">숨김</span>' : ''}</div>
+              ${p.title?`<div style="font-size:11px;color:var(--blue);margin-top:2px">제목: ${escHtml(p.title)}</div>`:''}
+              <div style="margin-top:4px">
                 ${p.ip
                   ? `<code style="font-size:11px;background:var(--bg3);color:var(--yellow);padding:1px 6px;border-radius:4px;cursor:pointer;border:1px solid var(--border2)" onclick="quickBanIp('${escHtml(p.ip)}')" title="클릭 → 차단">🌐 ${escHtml(p.ip)}</code>`
                   : `<span style="font-size:11px;color:var(--text3)">IP 없음</span>`}
@@ -501,8 +502,8 @@ async function loadAllComments() {
           <tr>
             <td style="color:var(--text2);font-size:12px">${c.parent_id ? `↳ #${c.post_id}` : `#${c.post_id}`}</td>
             <td class="content-cell">
-              <div>${escHtml(c.content||'')}</div>
-              <div style="margin-top:3px">
+              <div style="white-space:pre-wrap;word-break:break-all">${escHtml(c.content||'')} ${c.hidden ? '<span class="hidden-badge">숨김</span>' : ''}</div>
+              <div style="margin-top:4px">
                 ${c.ip
                   ? `<code style="font-size:11px;background:var(--bg3);color:var(--yellow);padding:1px 6px;border-radius:4px;cursor:pointer;border:1px solid var(--border2)" onclick="quickBanIp('${escHtml(c.ip)}')" title="클릭 → 차단">🌐 ${escHtml(c.ip)}</code>`
                   : `<span style="font-size:11px;color:var(--text3)">IP 없음</span>`}
@@ -511,7 +512,7 @@ async function loadAllComments() {
             <td style="color:var(--accent)">👍 ${c.up||0}</td>
             <td>${c.report_count > 0 ? `<span class="report-badge">${c.report_count}건</span>` : '-'}</td>
             <td style="color:var(--text3)">${timeAgo(c.created_at)}</td>
-            <td>
+            <td style="display:flex;gap:4px;flex-wrap:wrap">
               <button class="btn-delete" onclick="deleteCommentFromList(${c.id})">삭제</button>
               ${c.hidden ? `<button class="btn-restore" onclick="restoreComment(${c.id})">복원</button>` : `<button class="btn-restore" onclick="hideComment(${c.id})">숨김</button>`}
             </td>
