@@ -31,6 +31,9 @@ let replyImages={}; // {parentId: [images]}
 let myIp=''; // 사용자 IP
 let unreadOnly=false; // 안 본 글만 보기
 let readPostIds=new Set(); // 읽은 글 ID 목록
+let currentPage=1; // 현재 페이지
+let totalPosts=[]; // 전체 로드된 글 목록
+const PAGE_SIZE=15; // 페이지당 글 수
 
 window.onload=async()=>{
   showSkeleton();
@@ -157,31 +160,29 @@ function showSkeleton(){
 }
 
 async function loadPosts(){
+  currentPage=1;
   try{
     let query=sb.from('posts').select('*');
     if(currentTab==='recent'){
-      query=query.order('created_at',{ascending:false}).limit(50);
+      query=query.order('created_at',{ascending:false}).limit(300);
     }else if(currentTab==='hot'){
       const since=new Date(Date.now()-86400000).toISOString();
-      query=query.gte('created_at',since).limit(100);
+      query=query.gte('created_at',since).limit(300);
     }else if(currentTab==='comments'){
-      // comment_count 컬럼 없을 수 있어서 created_at으로 fallback
       try{
-        query=query.order('comment_count',{ascending:false}).limit(50);
+        query=query.order('comment_count',{ascending:false}).limit(300);
       }catch{
-        query=sb.from('posts').select('*').order('created_at',{ascending:false}).limit(50);
+        query=sb.from('posts').select('*').order('created_at',{ascending:false}).limit(300);
       }
     }else if(currentTab==='debate'){
-      query=query.limit(200);
+      query=query.limit(300);
     }
     const{data,error}=await query;
     if(error)throw error;
     let result=data||[];
-
     if(currentTab==='hot'){
-      result=result.sort((a,b)=>(b.up||0)+(b.comment_count||0)*2-((a.up||0)+(a.comment_count||0)*2)).slice(0,50);
+      result=result.sort((a,b)=>(b.up||0)+(b.comment_count||0)*2-((a.up||0)+(a.comment_count||0)*2));
     }else if(currentTab==='debate'){
-      // 논쟁지수: 댓글 10개+, up+down 20+, 비율 30~70%
       result=result.filter(p=>{
         const total=(p.up||0)+(p.down||0);
         if(total<20)return false;
@@ -191,10 +192,12 @@ async function loadPosts(){
         const sa=(a.comment_count||0)+(a.up||0)+(a.down||0);
         const sb2=(b.comment_count||0)+(b.up||0)+(b.down||0);
         return sb2-sa;
-      }).slice(0,50);
+      });
     }
-
-    renderList(result);
+    // hidden 글 제외
+    result=result.filter(p=>!p.hidden);
+    totalPosts=result;
+    renderList(totalPosts);
     if(result.length>0&&currentTab==='recent') latestPostId=result[0].id;
   }catch(e){
     document.getElementById('postList').innerHTML=`<div class="empty-state"><div>⚠️</div><p>글을 불러오지 못했어요<br><small>${e.message}</small></p></div>`;
@@ -203,7 +206,6 @@ async function loadPosts(){
 
 function renderList(posts,highlight=''){
   const c=document.getElementById('postList');
-  // 안 본 글 필터
   const filtered=unreadOnly?posts.filter(p=>!readPostIds.has(p.id)):posts;
   if(!filtered.length){
     c.innerHTML=unreadOnly
@@ -215,14 +217,47 @@ function renderList(posts,highlight=''){
           :`<div class="empty-state"><div>🌑</div><p>아직 글이 없어요</p></div>`));
     return;
   }
-  const adSlot=()=>`<div style="text-align:center;margin:6px 0 10px"><a href="https://rzekl.com/c/1e8d1144944dced197d016525dc3e8/" target="_blank" rel="noopener" style="display:inline-block;"><div style="background:linear-gradient(135deg,#e62e04,#ff6b35);width:320px;height:100px;display:flex;align-items:center;justify-content:center;border-radius:8px;gap:10px;"><span style="color:#fff;font-size:28px;">🛒</span><div style="color:#fff;text-align:left;"><div style="font-size:15px;font-weight:700;font-family:sans-serif">AliExpress</div><div style="font-size:11px;opacity:0.9;font-family:sans-serif">특가 상품 보러가기 →</div></div></div></a></div>`;
-  const cards=filtered.map(p=>renderPostCard(p,highlight));
+  // 페이지네이션
+  const totalPages=Math.ceil(filtered.length/PAGE_SIZE);
+  if(currentPage>totalPages)currentPage=totalPages;
+  const start=(currentPage-1)*PAGE_SIZE;
+  const pagePosts=filtered.slice(start,start+PAGE_SIZE);
+
+  const adSlot=()=>`<div style="text-align:center;margin:6px 0 10px"><a href="https://rzekl.com/c/1e8d1144944dced197d016525dc3e8/" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;"><div style="background:linear-gradient(135deg,#e62e04,#ff6b35);width:320px;height:100px;display:flex;align-items:center;justify-content:center;border-radius:8px;gap:10px;"><span style="color:#fff;font-size:28px;">🛒</span><div style="color:#fff;text-align:left;"><div style="font-size:15px;font-weight:700;font-family:sans-serif">AliExpress</div><div style="font-size:11px;opacity:0.9;font-family:sans-serif">특가 상품 보러가기 →</div></div></div></a></div>`;
+  const cards=pagePosts.map(p=>renderPostCard(p,highlight));
   const withAds=[];
   cards.forEach((card,i)=>{
     withAds.push(card);
     if((i+1)%3===0)withAds.push(adSlot());
   });
-  c.innerHTML=withAds.join('');
+
+  // 페이지 버튼
+  const btnStyle=(active)=>`background:${active?'var(--accent)':'var(--bg3)'};border:1px solid ${active?'var(--accent)':'var(--border2)'};color:${active?'#fff':'var(--text2)'};padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:${active?'700':'400'};font-family:'Noto Sans KR',sans-serif;`;
+  const disabledStyle=`background:var(--bg3);border:1px solid var(--border2);color:var(--text3);padding:6px 10px;border-radius:8px;cursor:default;font-size:12px;opacity:0.4;`;
+  const pageNums=Array.from({length:totalPages},(_,i)=>i+1).filter(p=>p===1||p===totalPages||Math.abs(p-currentPage)<=1);
+  let pageButtons='';
+  pageNums.forEach((p,i)=>{
+    if(i>0&&p-pageNums[i-1]>1)pageButtons+=`<span style="color:var(--text3);padding:0 2px;line-height:32px">…</span>`;
+    pageButtons+=`<button onclick="goPage(${p})" style="${btnStyle(p===currentPage)}">${p}</button>`;
+  });
+  const pageNav=totalPages>1?`
+    <div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:16px 0;flex-wrap:wrap;">
+      <button onclick="goPage(${currentPage-1})" ${currentPage===1?`style="${disabledStyle}" disabled`:`style="${btnStyle(false)}"`}>‹</button>
+      ${pageButtons}
+      <button onclick="goPage(${currentPage+1})" ${currentPage===totalPages?`style="${disabledStyle}" disabled`:`style="${btnStyle(false)}"`}>›</button>
+      <span style="color:var(--text3);font-size:11px;width:100%;text-align:center;margin-top:4px">${currentPage}/${totalPages}페이지 · 총 ${filtered.length}개</span>
+    </div>`:'';
+
+  c.innerHTML=withAds.join('')+pageNav;
+}
+
+function goPage(page){
+  const filtered=unreadOnly?totalPosts.filter(p=>!readPostIds.has(p.id)):totalPosts;
+  const totalPages=Math.ceil(filtered.length/PAGE_SIZE);
+  if(page<1||page>totalPages)return;
+  currentPage=page;
+  renderList(totalPosts);
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 
 function renderPostCard(p,highlight=''){
@@ -421,7 +456,9 @@ async function submitPost(){
 }
 
 function hasBannedWord(t){
-  return BANNED_WORDS.some(w=>t.includes(w))||dbBannedWords.some(w=>t.includes(w));
+  const normalized=t.toLowerCase().replace(/\s/g,'');
+  return BANNED_WORDS.some(w=>normalized.includes(w.toLowerCase()))||
+         dbBannedWords.some(w=>normalized.includes(w.toLowerCase()));
 }
 
 function startCooldown(){
@@ -782,7 +819,7 @@ function closeReport(e){if(!e||e.target===document.getElementById('reportModal')
 
 async function submitReport(reason){
   try{
-    await sb.from('reports').insert({target_type:reportTarget.type,target_id:reportTarget.id||currentPostId,reason,ip:myIp});
+    await sb.from('reports').insert({target_type:reportTarget.type,target_id:reportTarget.id||currentPostId,reason});
     if(reportTarget.type==='post'&&currentPostData){
       const newCount=(currentPostData.report_count||0)+1;
       const hidden=newCount>=REPORT_THRESHOLD;
