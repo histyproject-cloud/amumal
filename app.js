@@ -215,7 +215,7 @@ function renderList(posts,highlight=''){
           :`<div class="empty-state"><div>🌑</div><p>아직 글이 없어요</p></div>`));
     return;
   }
-  const adSlot=()=>`<div style="text-align:center;margin:6px 0 10px"><ins class="kakao_ad_area" style="display:none;" data-ad-unit="DAN-HtdegUpTjzzU6hEh" data-ad-width="320" data-ad-height="100"></ins></div>`;
+  const adSlot=()=>`<div style="text-align:center;margin:6px 0 10px"><a href="https://rzekl.com/c/1e8d1144944dced197d016525dc3e8/" target="_blank" rel="noopener" style="display:inline-block;"><div style="background:linear-gradient(135deg,#e62e04,#ff6b35);width:320px;height:100px;display:flex;align-items:center;justify-content:center;border-radius:8px;gap:10px;"><span style="color:#fff;font-size:28px;">🛒</span><div style="color:#fff;text-align:left;"><div style="font-size:15px;font-weight:700;font-family:sans-serif">AliExpress</div><div style="font-size:11px;opacity:0.9;font-family:sans-serif">특가 상품 보러가기 →</div></div></div></a></div>`;
   const cards=filtered.map(p=>renderPostCard(p,highlight));
   const withAds=[];
   cards.forEach((card,i)=>{
