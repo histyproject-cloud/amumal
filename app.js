@@ -220,7 +220,7 @@ function renderList(posts,highlight=''){
   const withAds=[];
   cards.forEach((card,i)=>{
     withAds.push(card);
-    if((i+1)%3===0&&i+1<cards.length)withAds.push(adSlot());
+    if((i+1)%3===0)withAds.push(adSlot());
   });
   c.innerHTML=withAds.join('');
 }
